@@ -86,10 +86,33 @@ select,.btn{background:var(--bg);color:var(--text);border:1px solid var(--line2)
 footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted);padding-top:8px}
 .view{display:none;flex-direction:column;gap:24px}.view.on{display:flex}
 .fade{animation:fade .5s ease both}@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.gate{position:fixed;inset:0;background:radial-gradient(1200px 600px at 50% -10%,#12202F 0%,var(--bg) 60%);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+.gate.on{display:flex}
+.gate form{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;display:flex;flex-direction:column;gap:16px}
+.gate label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--soft)}
+.gate input[type=email],.gate input[type=password]{background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:10px;padding:12px 14px;font:15px Inter,sans-serif;min-height:46px}
+.gate input:focus{outline:2px solid var(--ai);outline-offset:1px}
+.gate .remember{flex-direction:row;align-items:center;gap:10px}
+.gate .remember input{width:20px;height:20px;accent-color:var(--up)}
+.gate button{min-height:46px;border:0;border-radius:10px;background:var(--up);color:#06281A;font:600 15px Inter,sans-serif;cursor:pointer}
+.gate button:disabled{opacity:.6;cursor:wait}
+.gate .err{color:var(--downtext);font-size:14px;min-height:20px}
+.linkbtn{background:none;border:0;color:var(--soft);font:13px Inter,sans-serif;cursor:pointer;padding:10px 4px;min-height:44px}
+.linkbtn:hover{color:var(--text)}
 @media (max-width:640px){.wrap{padding:16px 14px 40px;gap:18px}.panel{padding:16px}.tile{padding:14px;flex-basis:140px}.tile .v{font-size:21px}nav.tabs{order:3;width:100%}nav.tabs a{flex:1 1 auto;text-align:center;padding:10px 6px}}
 </style>
 </head>
 <body>
+<div class="gate" id="gate">
+<form id="login" autocomplete="on">
+<div class="brand"><svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><rect x="1" y="1" width="34" height="34" rx="9" fill="#11171F" stroke="#2A3542"/><polyline points="8,24 14,17 19,21 28,10" fill="none" stroke="#3FD68F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>Paper Desk</b><small>Sign in to see the bots</small></div></div>
+<label>Email<input type="email" id="lemail" autocomplete="username" required></label>
+<label>Password<input type="password" id="lpass" autocomplete="current-password" required></label>
+<label class="remember"><input type="checkbox" id="lremember" checked>Remember this device</label>
+<div class="err" id="lerr" role="alert"></div>
+<button type="submit" id="lbtn">Sign in</button>
+</form>
+</div>
 <div class="wrap">
 <header class="top">
 <div class="brand">
@@ -105,6 +128,7 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;font-s
 <div style="display:flex;gap:10px;align-items:center">
 <span class="pill" id="mkt"><span class="dot"></span><span>…</span></span>
 <span class="pill">PAPER</span>
+<button type="button" class="linkbtn" id="logout" hidden>Sign out</button>
 </div>
 </header>
 
@@ -339,9 +363,34 @@ function route(e,keep){
   document.querySelectorAll('nav.tabs a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
   if(!D)return;({overview:renderOverview,decisions:renderDecisions,trades:renderTrades,bots:renderBots}[v]||renderOverview)();if(!keep)window.scrollTo(0,0);
 }
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const store={get:k=>{try{return localStorage.getItem(k)||sessionStorage.getItem(k)}catch(e){return null}},
+  set:(k,v,keep)=>{try{(keep?localStorage:sessionStorage).setItem(k,v)}catch(e){}},del:k=>{try{localStorage.removeItem(k);sessionStorage.removeItem(k)}catch(e){}}};
+let KEY=null;
+async function deriveKey(email,pass,iter){
+  const em=email.trim().toLowerCase(),enc=new TextEncoder();
+  const salt=new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode('paper-desk:'+em))).slice(0,16);
+  const base=await crypto.subtle.importKey('raw',enc.encode(em+':'+pass),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',hash:'SHA-256',salt,iterations:iter},base,{name:'AES-GCM',length:256},true,['decrypt']);
+}
+async function openBlob(blob,key){return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(blob.iv)},key,b64(blob.ct))))}
+async function savedKey(){const r=store.get('pd-key');if(!r)return null;try{return await crypto.subtle.importKey('raw',b64(r),{name:'AES-GCM'},true,['decrypt'])}catch(e){return null}}
+function showGate(msg){$('#gate').classList.add('on');$('#lerr').textContent=msg||'';$('#logout').hidden=true;setTimeout(()=>$('#lemail').focus(),50)}
+let BLOB=null;
+$('#login').addEventListener('submit',async e=>{e.preventDefault();const btn=$('#lbtn');btn.disabled=true;btn.textContent='Signing in…';$('#lerr').textContent='';
+  try{const k=await deriveKey($('#lemail').value,$('#lpass').value,BLOB.iter);const d=await openBlob(BLOB,k);KEY=k;
+    store.set('pd-key',btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.exportKey('raw',k)))),$('#lremember').checked);
+    $('#lpass').value='';$('#gate').classList.remove('on');show(d)}
+  catch(err){$('#lerr').textContent='Wrong email or password.'}
+  btn.disabled=false;btn.textContent='Sign in'});
+$('#logout').onclick=()=>{store.del('pd-key');KEY=null;D=null;showGate()};
+function show(d){D=d;$('#loading')?.remove();$('#logout').hidden=!BLOB;$('#foot').textContent='Data built '+fmtT(D.built_at)+' · times in '+tz;route(null,first);first=true}
 let first=false;async function load(){
-  try{const r=await fetch('data.json?'+Date.now());D=await r.json();$('#loading')?.remove();$('#foot').textContent='Data built '+fmtT(D.built_at)+' · times in '+tz;route(null,first);first=true}
-  catch(e){$('#loading').textContent='Could not load data yet — the first dashboard build may still be running.'}
+  try{const r=await fetch('data.json?'+Date.now());const j=await r.json();
+    if(j.enc){BLOB=j;KEY=KEY||await savedKey();if(!KEY){showGate();return}
+      try{return show(await openBlob(j,KEY))}catch(e){store.del('pd-key');KEY=null;showGate('Please sign in again.');return}}
+    BLOB=null;return show(j);}
+  catch(e){const l=$('#loading');if(l)l.textContent='Could not load data yet — the first dashboard build may still be running.'}
 }
 window.addEventListener('hashchange',route);market();setInterval(market,30000);load();setInterval(load,5*60000);
 </script>
