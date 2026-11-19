@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper Desk — live trading bots</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Crect x='1' y='1' width='34' height='34' rx='9' fill='%2311171F'/%3E%3Cpolyline points='8,24 14,17 19,21 28,10' fill='none' stroke='%233FD68F' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#0A0E13;--panel:#11171F;--panel2:#0D131A;--line:#1E2833;--line2:#2A3542;--text:#E6EDF3;--muted:#8B98A5;--soft:#A9B6C3;
+--up:#3FD68F;--upbg:#0E2219;--upline:#1F4D38;--uptext:#7BE3B0;--down:#FF9A62;--downbg:#2A1A10;--downtext:#FFB98F;--ai:#8FBBFF;--aibg:#0F1B2B;--ailine:#1E3A5F;
+--mono:'JetBrains Mono',ui-monospace,monospace;--head:'Space Grotesk',Inter,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:15px;-webkit-font-smoothing:antialiased}
+a{color:var(--ai);text-decoration:none}a:hover{color:#C2DAFF}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 32px 48px;display:flex;flex-direction:column;gap:24px}
+header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px}.brand b{font-family:var(--head);font-size:20px;letter-spacing:-.01em}.brand small{display:block;font-size:12px;color:var(--muted)}
+nav.tabs{display:flex;flex-wrap:wrap;gap:4px}
+nav.tabs a{padding:10px 14px;border-radius:8px;color:var(--soft);font-weight:500}
+nav.tabs a.on{background:#16202B;color:var(--text)}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line2);border-radius:999px;font-size:13px;color:var(--soft)}
+.pill.live{border-color:var(--upline);background:var(--upbg);color:var(--uptext)}
+.pill.closed{color:var(--soft)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--up)}
+.pill.live .dot{animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(63,214,143,.5)}70%{box-shadow:0 0 0 8px rgba(63,214,143,0)}100%{box-shadow:0 0 0 0 rgba(63,214,143,0)}}
+.pill.closed .dot{background:var(--muted)}
+.hero{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:24px}
+.label{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.big{font-family:var(--mono);font-weight:600;font-size:clamp(38px,7vw,56px);letter-spacing:-.03em;line-height:1.05}
+.mono{font-family:var(--mono)}
+.up{color:var(--up)}.down{color:var(--down)}.ai{color:var(--ai)}.muted{color:var(--muted)}.soft{color:var(--soft)}
+.tiles{display:flex;flex-wrap:wrap;gap:12px}
+.tile{flex:1 1 180px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px}
+.tile .v{font-family:var(--mono);font-size:26px;font-weight:600}
+.tile small{font-size:12px;color:var(--muted)}
+.tile.aitile{border-color:var(--ailine)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel.aip{border-color:var(--ailine)}
+h1,h2{font-family:var(--head);margin:0}
+h2{font-size:20px;font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.grow{flex:1 1 420px;min-width:0}
+.between{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.seg{display:flex;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:4px}
+.seg button{min-width:48px;min-height:36px;border:0;border-radius:7px;font:600 13px Inter,sans-serif;cursor:pointer;background:transparent;color:var(--muted)}
+.seg button.on{background:var(--line);color:var(--text)}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--soft)}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.sw{width:18px;height:3px;border-radius:2px;background:var(--up)}.sw.dash{height:0;border-top:2px dashed var(--muted);background:none}.sw.aisw{background:var(--ai)}
+.chart{position:relative}
+.chart svg{display:block;width:100%;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;font-size:12px;display:none;white-space:nowrap;z-index:2}
+.axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:8px}
+.bot{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.bot .bd{width:10px;height:10px;border-radius:50%;flex:0 0 10px}
+.bot .nm{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.bot .nm span{font-weight:600}.bot small{font-size:12px;color:var(--muted)}
+.bot .rt{display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
+.badge{flex:0 0 auto;font-size:12px;font-weight:600;padding:4px 8px;border-radius:6px;background:#16202B;color:#C9D3DD;white-space:nowrap}
+.b-take,.b-buy,.b-long{background:var(--upbg);color:var(--uptext)}
+.b-skip,.b-sell,.b-short,.b-stop,.b-stopped{background:var(--downbg);color:var(--downtext)}
+.b-hold{background:var(--aibg);color:var(--ai)}
+.plan{padding:14px;border-radius:12px;background:var(--aibg);border:1px solid var(--ailine);display:flex;flex-direction:column;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{font-size:13px;padding:6px 10px;border-radius:8px;background:#16202B;color:#C9D3DD}
+.dec{display:flex;gap:12px;align-items:flex-start}
+.dec .t{font-family:var(--mono);font-size:13px;color:var(--muted);flex:0 0 52px;padding-top:3px}
+.dec .r{flex:1 1 auto;min-width:0;line-height:1.5;color:#C9D3DD}
+.tbl{overflow-x:auto}
+table{width:100%;min-width:760px;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:500;padding:10px 12px;border-bottom:1px solid var(--line)}
+td{padding:12px;border-bottom:1px solid #172029;vertical-align:top}
+td.n,th.n{text-align:right}
+select,.btn{background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:8px;padding:10px 12px;font:14px Inter,sans-serif;min-height:44px}
+.btn{background:#16202B;cursor:pointer}
+.tl{display:flex;gap:16px}.tl .rail{display:flex;flex-direction:column;align-items:center;flex:0 0 14px}
+.tl .rail i{width:14px;height:14px;border-radius:50%;margin-top:3px;box-shadow:0 0 0 4px var(--panel)}
+.tl .rail u{flex:1 1 auto;width:2px;background:var(--line);min-height:24px;text-decoration:none}
+.tl .body{flex:1 1 auto;min-width:0;padding-bottom:22px;display:flex;flex-direction:column;gap:6px}
+.empty{padding:28px;border:1px dashed var(--line2);border-radius:12px;color:var(--muted);text-align:center;line-height:1.6}
+.kv{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}.kv:last-child{border-bottom:0}
+footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted);padding-top:8px}
+.view{display:none;flex-direction:column;gap:24px}.view.on{display:flex}
+.fade{animation:fade .5s ease both}@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (max-width:640px){.wrap{padding:16px 14px 40px;gap:18px}.panel{padding:16px}.tile{padding:14px;flex-basis:140px}.tile .v{font-size:21px}nav.tabs{order:3;width:100%}nav.tabs a{flex:1 1 auto;text-align:center;padding:10px 6px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+<div class="brand">
+<svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><rect x="1" y="1" width="34" height="34" rx="9" fill="#11171F" stroke="#2A3542"/><polyline points="8,24 14,17 19,21 28,10" fill="none" stroke="#3FD68F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<div><b>Paper Desk</b><small>Alpaca paper account · bots run on GitHub Actions</small></div>
+</div>
+<nav class="tabs" aria-label="Main">
+<a href="#overview" data-v="overview">Overview</a>
+<a href="#decisions" data-v="decisions">AI decisions</a>
+<a href="#trades" data-v="trades">Trades</a>
+<a href="#bots" data-v="bots">Bots</a>
+</nav>
+<div style="display:flex;gap:10px;align-items:center">
+<span class="pill" id="mkt"><span class="dot"></span><span>…</span></span>
+<span class="pill">PAPER</span>
+</div>
+</header>
+
+<main id="app">
+<div class="empty" id="loading">Loading the latest data…</div>
+
+<section class="view" id="v-overview">
+<div class="hero fade">
+<div style="display:flex;flex-direction:column;gap:6px">
+<span class="label">Account equity</span>
+<span class="big" id="eq">—</span>
+<span class="mono" id="eqchg" style="font-size:15px"></span>
+</div>
+<span class="muted" style="font-size:12px" id="built"></span>
+</div>
+<div class="tiles fade" id="tiles"></div>
+<section class="panel fade" aria-label="Money graph">
+<div class="between">
+<div style="display:flex;flex-direction:column;gap:4px"><h2>Money over time</h2>
+<div class="legend"><span><span class="sw"></span>Account equity</span></div></div>
+<div class="seg" role="group" aria-label="Range" id="ranges"></div>
+</div>
+<div class="chart" id="eqchart"></div>
+</section>
+<section class="panel aip fade" aria-label="AI versus rules">
+<div class="between"><div style="display:flex;flex-direction:column;gap:4px"><h2>Is the AI helping?</h2>
+<div class="legend"><span><span class="sw aisw"></span>AI agents (actual P&amp;L)</span><span><span class="sw dash"></span>Plain rules, no AI (shadow)</span></div></div>
+<span class="mono ai" id="edge" style="font-size:18px"></span></div>
+<div class="chart" id="aichart"></div>
+</section>
+<div class="row">
+<section class="panel grow" aria-label="Bots"><div class="between"><h2>Bots</h2><a href="#bots">Details →</a></div><div id="botlist" style="display:flex;flex-direction:column;gap:12px"></div></section>
+<section class="panel aip grow" aria-label="Latest AI decisions"><div class="between"><h2>What the AI is thinking</h2><a href="#decisions">Full journal →</a></div><div id="latest" style="display:flex;flex-direction:column;gap:14px"></div></section>
+</div>
+<section class="panel" aria-label="Recent trades"><div class="between"><h2>Recent trades</h2><a href="#trades">All trades →</a></div><div class="tbl" id="recent"></div></section>
+</section>
+
+<section class="view" id="v-decisions">
+<div class="between">
+<div style="display:flex;flex-direction:column;gap:6px"><span class="label ai">AI agents</span><h1 style="font-size:clamp(28px,5vw,40px);letter-spacing:-.02em">Decision journal</h1>
+<span class="soft">Every call the agents made, with their reasons — and what plain rules would have done.</span></div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<div class="seg" role="group" aria-label="Agent" id="agentseg"></div>
+<label class="soft" style="display:flex;gap:8px;align-items:center;font-size:13px">Day <select id="daysel"></select></label>
+</div>
+</div>
+<div id="decbody"></div>
+</section>
+
+<section class="view" id="v-trades">
+<section class="panel"><div class="between"><h2>All trades</h2>
+<div style="display:flex;flex-wrap:wrap;gap:8px"><label class="soft" style="display:flex;gap:8px;align-items:center;font-size:13px">Bot <select id="botfilter"><option value="">All bots</option></select></label>
+<button class="btn" type="button" id="csv">Download CSV</button></div></div>
+<div class="tbl" id="alltrades"></div></section>
+</section>
+
+<section class="view" id="v-bots"><div id="botcards" class="row"></div></section>
+
+<footer><span>Paper trading only — no real money. Updated after every bot run.</span><span id="foot"></span></footer>
+</main>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const usd=(v,d=2)=>v==null?'—':(v<0?'−':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const sgn=(v,d=2)=>v==null?'—':(v>0?'+':v<0?'−':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const cls=v=>v>0?'up':v<0?'down':'soft';
+const ago=iso=>{if(!iso)return'never';const m=Math.round((Date.now()-new Date(iso))/6e4);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'};
+const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+const fmtT=iso=>iso?new Date(iso).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}):'';
+let D=null,range='ALL',agent='qqq';
+
+function chart(el,series,opts){
+  // series: [{pts:[[x,y]...], color, dash, area}] ; x numeric (ms)
+  const W=1000,H=opts.h||260,P=8;const all=series.flatMap(s=>s.pts);
+  if(all.length<2){el.innerHTML=`<div class="empty">${opts.empty||'Not enough data yet — check back after a few bot runs.'}</div>`;return}
+  let x0=Math.min(...all.map(p=>p[0])),x1=Math.max(...all.map(p=>p[0])),y0=Math.min(...all.map(p=>p[1])),y1=Math.max(...all.map(p=>p[1]));
+  if(opts.zero){y0=Math.min(y0,0);y1=Math.max(y1,0)}
+  const pad=(y1-y0)*.12||Math.abs(y1)*.002||1;y0-=pad;y1+=pad;if(x1===x0)x1=x0+1;
+  const X=x=>(x-x0)/(x1-x0)*W,Y=y=>P+(1-(y-y0)/(y1-y0))*(H-2*P);
+  let g='';for(let i=1;i<4;i++)g+=`<line x1="0" x2="${W}" y1="${H*i/4}" y2="${H*i/4}" stroke="#1E2833"/>`;
+  if(opts.zero)g+=`<line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2A3542"/>`;
+  let body='';
+  series.forEach(s=>{const d=s.pts.map(p=>`${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ');
+    if(s.area)body+=`<polygon points="${X(s.pts[0][0])},${H} ${d} ${X(s.pts.at(-1)[0])},${H}" fill="${s.color}" fill-opacity=".08"/>`;
+    body+=`<polyline points="${d}" fill="none" stroke="${s.color}" stroke-width="${s.dash?2:3}" ${s.dash?'stroke-dasharray="6 6"':''} stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`});
+  const last=series[0].pts.at(-1);
+  body+=`<circle cx="${X(last[0])}" cy="${Y(last[1])}" r="5" fill="${series[0].color}" vector-effect="non-scaling-stroke"/>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px" role="img" aria-label="${esc(opts.label)}">${g}${body}<line class="cross" x1="0" x2="0" y1="0" y2="${H}" stroke="#3A4654" stroke-dasharray="3 4" vector-effect="non-scaling-stroke" style="display:none"/></svg><div class="tip"></div>
+  <div class="axis">${[0,.25,.5,.75,1].map(f=>`<span>${opts.xfmt(x0+(x1-x0)*f)}</span>`).join('')}</div>`;
+  const svg=el.querySelector('svg'),tip=el.querySelector('.tip'),cross=el.querySelector('.cross');
+  const move=e=>{const r=svg.getBoundingClientRect();const cx=((e.touches?e.touches[0].clientX:e.clientX)-r.left)/r.width;const xv=x0+cx*(x1-x0);
+    const rows=series.map(s=>{let b=s.pts[0];for(const p of s.pts)if(Math.abs(p[0]-xv)<Math.abs(b[0]-xv))b=p;return[s,b]});
+    const px=X(rows[0][1][0]);cross.setAttribute('x1',px);cross.setAttribute('x2',px);cross.style.display='';
+    tip.style.display='block';tip.innerHTML=`<div class="muted">${opts.tipx(rows[0][1][0])}</div>`+rows.map(([s,b])=>`<div class="mono" style="color:${s.color}">${s.name}: ${opts.yfmt(b[1])}</div>`).join('');
+    const left=px/W*r.width;tip.style.left=Math.min(Math.max(0,left-tip.offsetWidth/2),r.width-tip.offsetWidth)+'px';tip.style.top='6px'};
+  svg.addEventListener('mousemove',move);svg.addEventListener('touchmove',move,{passive:true});
+  svg.addEventListener('mouseleave',()=>{tip.style.display='none';cross.style.display='none'});
+}
+
+function drawEquity(){
+  const pts=(D.history[range]||[]).map(([t,e])=>[t*1000,e]);
+  const intraday=range==='1D'||range==='1W';
+  chart($('#eqchart'),[{pts,color:'#3FD68F',area:true,name:'Equity'}],{h:280,label:'Account equity over time',
+    xfmt:x=>new Date(x).toLocaleString('en-AU',intraday?{weekday:range==='1W'?'short':undefined,hour:'2-digit',minute:'2-digit',hour12:false}:{day:'numeric',month:'short'}),
+    tipx:x=>new Date(x).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}),yfmt:v=>usd(v)});
+  $('#ranges').innerHTML=['1D','1W','1M','ALL'].map(r=>`<button type="button" class="${r===range?'on':''}" data-r="${r}">${r}</button>`).join('');
+  $('#ranges').querySelectorAll('button').forEach(b=>b.onclick=()=>{range=b.dataset.r;drawEquity()});
+}
+
+function drawAI(){
+  const toPts=a=>a.map(([d,v])=>[Date.parse(d+'T12:00:00Z'),v]);
+  const ai=toPts(D.ai_vs_rules.ai),ru=toPts(D.ai_vs_rules.rules);
+  chart($('#aichart'),[{pts:ai,color:'#8FBBFF',name:'AI'},{pts:ru,color:'#8B98A5',dash:true,name:'Rules'}],{h:200,zero:true,label:'AI agents versus plain rules, cumulative P&L',
+    empty:'The comparison starts after the agents’ first full day of trading.',
+    xfmt:x=>new Date(x).toLocaleDateString('en-AU',{day:'numeric',month:'short'}),tipx:x=>new Date(x).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}),yfmt:v=>sgn(v)});
+  const e=D.stats.ai_edge;$('#edge').textContent=(ai.length||ru.length)?`AI ${e>=0?'ahead':'behind'} by ${usd(Math.abs(e),0)}`:'';
+}
+
+function tradeRows(list){
+  if(!list.length)return'<div class="empty">No trades yet. They appear here as soon as a bot fills an order.</div>';
+  return`<table><thead><tr><th>When</th><th>Bot</th><th>Symbol</th><th>Side</th><th>Entry → Exit</th><th>Why</th><th class="n">P&amp;L</th></tr></thead><tbody>${
+  list.map(t=>`<tr><td class="mono soft" style="font-size:13px;white-space:nowrap">${fmtT(t.closed||t.opened)}${t.open?' <span class="badge b-hold">open</span>':''}</td><td>${esc(t.bot)}</td><td class="mono" style="font-weight:600">${esc(t.symbol)}</td>
+  <td><span class="badge b-${t.side.toLowerCase()}">${t.side}</span></td><td class="mono" style="font-size:13px;white-space:nowrap">${px(t.entry)} → ${t.open?'now '+px(t.exit):px(t.exit)}</td>
+  <td class="soft">${esc(t.why)}</td><td class="n mono ${cls(t.pnl)}" style="font-weight:600">${sgn(t.pnl)}</td></tr>`).join('')}</tbody></table>`;
+}
+const px=v=>v>=1000?v.toLocaleString('en-US',{maximumFractionDigits:2}):v>=1?v.toFixed(2):v.toPrecision(4);
+
+function botColor(b){return b.running?'#8FBBFF':b.last_ok===false?'#FF9A62':b.state.startsWith('Holding')?'#3FD68F':'#5B6875'}
+function botItem(b){return`<div class="bot"><span class="bd" style="background:${botColor(b)}"></span><div class="nm"><span>${esc(b.name)}</span><small>${esc(b.detail)}</small></div>
+<div class="rt"><span class="mono ${cls(b.pnl)}" style="font-weight:600">${sgn(b.pnl)}</span><small>${esc(b.state)}</small></div></div>`}
+
+function latestDecisions(){
+  const out=[];const q=D.qqq_days.at(-1);const c=D.crypto_runs.slice(-6).reverse();
+  if(q&&q.plan)out.push(`<div class="plan"><span class="label ai" style="font-size:12px">QQQ morning plan · ${esc(q.date)}</span><span style="line-height:1.5">${esc(q.plan.summary||'')}</span></div>`);
+  (q?.decisions||[]).slice(-3).reverse().forEach(d=>out.push(decLine(d.time+' ET',d.decision==='take'?'take':d.decision||d.kind,(d.decision==='take'&&d.size?`TAKE ${Math.round(d.size*100)}%`:(d.decision||'').toUpperCase())+(d.side?' '+d.side:''),d.reason)));
+  const cr=c.find(r=>r.view);if(cr)out.push(`<div class="plan"><span class="label ai" style="font-size:12px">Crypto view · ${fmtT(cr.time)}</span><span style="line-height:1.5">${esc(cr.view)}</span></div>`);
+  c.flatMap(r=>(r.actions||[]).map(a=>[r,a])).slice(0,3).forEach(([r,a])=>out.push(decLine(new Date(r.time).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit',hour12:false}),a.action,`${a.action.toUpperCase()} ${a.coin}`,a.reason)));
+  $('#latest').innerHTML=out.length?out.join(''):'<div class="empty">The agents haven’t made any calls yet. The QQQ agent starts at the US open; the crypto agent checks every hour.</div>';
+}
+function decLine(t,kind,label,reason){return`<div class="dec"><span class="t">${esc(t)}</span><span class="badge b-${esc((kind||'').toLowerCase())}">${esc(label)}</span><span class="r">${esc(reason||'')}</span></div>`}
+
+function renderOverview(){
+  const a=D.account,chg=a.equity-a.start_equity,day=a.equity-a.last_equity;
+  $('#eq').textContent=usd(a.equity);
+  $('#eqchg').innerHTML=`<span class="${cls(chg)}">${chg>=0?'▲':'▼'} ${sgn(chg)} (${(chg/a.start_equity*100).toFixed(2)}%) since start</span>`;
+  $('#built').textContent='Updated '+ago(D.built_at);
+  const s=D.stats;
+  $('#tiles').innerHTML=[
+    ['Today',`<span class="${cls(day)}">${sgn(day)}</span>`,'vs yesterday’s close'],
+    ['Win rate',s.win_rate==null?'—':Math.round(s.win_rate*100)+'%',`${s.wins} of ${s.trades} closed trades`],
+    ['Profit factor',s.profit_factor??'—','wins ÷ losses in $'],
+    ['Max drawdown',`<span class="${s.max_drawdown<0?'down':''}">${(s.max_drawdown*100).toFixed(1)}%</span>`,'worst dip from a peak'],
+    ['AI vs rules-only',`<span class="ai">${sgn(s.ai_edge,0)}</span>`,'what the AI added so far','aitile']
+  ].map(([l,v,sm,x])=>`<div class="tile ${x||''}"><span class="muted" style="font-size:13px">${l}</span><span class="v">${v}</span><small>${sm}</small></div>`).join('');
+  drawEquity();drawAI();
+  $('#botlist').innerHTML=D.bots.map(botItem).join('');
+  latestDecisions();
+  $('#recent').innerHTML=tradeRows(D.trades.slice(0,8));
+}
+
+function renderDecisions(){
+  $('#agentseg').innerHTML=[['qqq','QQQ agent'],['crypto','Crypto agent']].map(([k,l])=>`<button type="button" class="${k===agent?'on':''}" data-a="${k}">${l}</button>`).join('');
+  $('#agentseg').querySelectorAll('button').forEach(b=>b.onclick=()=>{agent=b.dataset.a;renderDecisions()});
+  const days=agent==='qqq'?D.qqq_days.map(d=>d.date):[...new Set(D.crypto_runs.map(r=>(r.time||r.id).slice(0,10)))];
+  days.reverse();const sel=$('#daysel');const cur=sel.dataset.agent===agent&&days.includes(sel.value)?sel.value:days[0];
+  sel.dataset.agent=agent;sel.innerHTML=days.map(d=>`<option ${d===cur?'selected':''}>${d}</option>`).join('');sel.onchange=renderDecisions;
+  const body=$('#decbody');
+  if(!cur){body.innerHTML=`<div class="empty">No ${agent==='qqq'?'QQQ':'crypto'} agent decisions yet.</div>`;return}
+  const dotc={take:'#3FD68F',buy:'#3FD68F',skip:'#FF9A62',sell:'#FF9A62',stop:'#FF9A62',stopped:'#FF9A62',hold:'#8FBBFF',close:'#C9D3DD'};
+  const step=(t,kind,label,sub,reason,facts)=>`<div class="tl"><div class="rail"><i style="background:${dotc[kind]||'#3A4654'}"></i><u></u></div><div class="body">
+   <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="mono soft" style="font-size:14px">${esc(t)}</span><span class="badge b-${esc(kind)}">${esc(label)}</span><span class="muted" style="font-size:13px">${esc(sub||'')}</span></div>
+   <span style="line-height:1.55;color:#D5DDE5">${esc(reason||'')}</span>${facts?`<span class="mono muted" style="font-size:12px">${esc(facts)}</span>`:''}</div></div>`;
+  if(agent==='qqq'){
+    const d=D.qqq_days.find(x=>x.date===cur),p=d.plan||{};
+    const tl=(d.decisions||[]).map(x=>step(x.time+' ET',x.kind==='hold'?(x.decision==='close'?'close':'hold'):x.decision,
+      x.kind==='hold'?(x.decision||'').toUpperCase():(x.decision||'').toUpperCase()+(x.size&&x.decision==='take'?' · '+Math.round(x.size*100)+'%':''),
+      x.kind==='hold'?'News review':(x.side||'')+' signal',x.reason)).join('')||'<div class="empty">No signals that day.</div>';
+    const res=d.agent_pnl!=null?`<div style="display:flex;gap:12px"><div class="tile" style="background:var(--upbg);border-color:var(--upline)"><small style="color:var(--uptext)">AI agent</small><span class="v ${cls(d.agent_pnl)}">${sgn(d.agent_pnl,0)}</span><small>${d.entries} trades</small></div>
+      <div class="tile"><small>Rules only</small><span class="v ${cls(d.shadow_pnl)}">${sgn(d.shadow_pnl,0)}</span><small>${d.shadow_trades} trades, full size</small></div></div>`:'<div class="empty">Day still running (or a test run).</div>';
+    body.innerHTML=`<div class="row"><div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px">
+      <section class="panel aip"><span class="label ai" style="font-size:12px">Morning plan</span><p style="margin:0;font-size:18px;line-height:1.55">${esc(p.summary||'')}</p>
+      <div class="chips">${chip(p.trade_today!==false,'Trading today','No trading today')}${chip(p.allow_long!==false,'Longs allowed','No longs')}${chip(p.allow_short!==false,'Shorts allowed','No shorts')}
+      <span class="chip">Max size ${Math.round((p.max_size??1)*100)}%</span>${(p.avoid_windows||[]).map(w=>`<span class="chip">Avoid ${esc(w)}</span>`).join('')}</div>
+      ${(p.key_events||[]).length?`<div class="soft" style="font-size:13px"><span class="muted">Key events:</span> ${p.key_events.map(esc).join(' · ')}</div>`:''}</section>
+      <section class="panel"><h2>Through the day</h2>${tl}</section></div>
+      <aside style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px"><section class="panel"><h2>Day result</h2>${res}</section>${scorecard()}</aside></div>`;
+  }else{
+    const runs=D.crypto_runs.filter(r=>(r.time||r.id).startsWith(cur)).reverse();
+    const items=runs.map(r=>{const t=new Date(r.time).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit',hour12:false});
+      const acts=(r.actions||[]).map(a=>step(t,a.action,`${a.action.toUpperCase()} ${a.coin}`,a.notional?usd(a.notional,0):'',a.reason,`@ ${px(a.price)}${a.stop_pct?' · stop −'+a.stop_pct+'%':''}`)).join('');
+      const quiet=(r.decisions||[]).filter(d=>!['buy','sell'].includes(d.decision)||d.blocked).map(d=>`${d.coin.split('/')[0]} ${d.decision}${d.blocked?' ('+d.blocked+')':''}`).join(' · ');
+      return acts+step(t,'hold','CHECK','',r.view,quiet)}).join('');
+    body.innerHTML=`<div class="row"><section class="panel" style="flex:999 1 560px;min-width:0"><h2>Hourly checks · times in ${esc(tz)}</h2>${items}</section>
+      <aside style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px">${cryptoNow(runs[0])}${scorecard()}</aside></div>`;
+  }
+}
+const chip=(ok,a,b)=>`<span class="chip" style="${ok?'background:var(--upbg);color:var(--uptext)':'background:var(--downbg);color:var(--downtext)'}">${ok?a:b}</span>`;
+function cryptoNow(r){if(!r||!r.coins)return'';return`<section class="panel"><h2>Coins at last check</h2>${Object.entries(r.coins).map(([k,v])=>`<div class="kv"><span>${esc(k)}</span><span class="mono">${px(v.price)} <span class="${cls(v.ret_24h_pct)}">${v.ret_24h_pct>0?'+':''}${v.ret_24h_pct}%</span></span></div>`).join('')}<small class="muted">24h change · rule says: ${Object.entries(r.coins).map(([k,v])=>k.split('/')[0]+' '+v.donchian_rule_state).join(', ')}</small></section>`}
+function scorecard(){
+  const days=D.qqq_days.filter(d=>d.agent_pnl!=null);const beat=days.filter(d=>d.agent_pnl>d.shadow_pnl).length;
+  const sk=D.qqq_days.flatMap(d=>d.decisions||[]).filter(x=>x.decision==='skip').length;
+  return`<section class="panel"><h2>Is the AI helping?</h2><div class="kv"><span class="soft">QQQ days traded</span><span class="mono">${days.length}</span></div>
+  <div class="kv"><span class="soft">Days AI beat rules</span><span class="mono">${beat} / ${days.length}</span></div><div class="kv"><span class="soft">QQQ signals skipped</span><span class="mono">${sk}</span></div>
+  <div class="kv"><span class="soft">Total edge vs rules</span><span class="mono ai">${sgn(D.stats.ai_edge,0)}</span></div></section>`}
+
+function renderTrades(){
+  const f=$('#botfilter');const names=[...new Set(D.trades.map(t=>t.bot))];
+  if(f.options.length<=1)names.forEach(n=>f.insertAdjacentHTML('beforeend',`<option>${esc(n)}</option>`));
+  const list=D.trades.filter(t=>!f.value||t.bot===f.value);f.onchange=renderTrades;
+  $('#alltrades').innerHTML=tradeRows(list);
+  $('#csv').onclick=()=>{const h=['opened','closed','bot','symbol','side','qty','entry','exit','pnl','open','why'];
+    const csv=[h.join(',')].concat(list.map(t=>h.map(k=>JSON.stringify(t[k]??'')).join(','))).join('\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='trades.csv';a.click()};
+}
+function renderBots(){
+  $('#botcards').innerHTML=D.bots.map(b=>`<section class="panel grow" style="flex-basis:300px"><div class="between"><h2 style="font-size:18px">${esc(b.name)}</h2><span class="bd" style="width:10px;height:10px;border-radius:50%;background:${botColor(b)}"></span></div>
+  <span class="soft">${esc(b.detail)}</span><div class="kv"><span class="soft">P&amp;L</span><span class="mono ${cls(b.pnl)}">${sgn(b.pnl)}</span></div>
+  <div class="kv"><span class="soft">Closed trades</span><span class="mono">${b.trades}</span></div><div class="kv"><span class="soft">Now</span><span>${esc(b.state)}</span></div>
+  <div class="kv"><span class="soft">Last run</span><span>${b.running?'running now':ago(b.last_run)}${b.last_ok===false?' · <span class="down">failed</span>':''}</span></div></section>`).join('');
+}
+
+function market(){
+  const now=new Date(),ny=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'}));const m=ny.getHours()*60+ny.getMinutes(),wd=ny.getDay();
+  const open=wd>0&&wd<6&&m>=570&&m<960;const el=$('#mkt');el.className='pill '+(open?'live':'closed');
+  el.lastElementChild.textContent=(open?'US market open · ':'US market closed · ')+ny.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})+' ET';
+}
+function route(e,keep){
+  const v=(location.hash||'#overview').slice(1);
+  document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
+  document.querySelectorAll('nav.tabs a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
+  if(!D)return;({overview:renderOverview,decisions:renderDecisions,trades:renderTrades,bots:renderBots}[v]||renderOverview)();if(!keep)window.scrollTo(0,0);
+}
+let first=false;async function load(){
+  try{const r=await fetch('data.json?'+Date.now());D=await r.json();$('#loading')?.remove();$('#foot').textContent='Data built '+fmtT(D.built_at)+' · times in '+tz;route(null,first);first=true}
+  catch(e){$('#loading').textContent='Could not load data yet — the first dashboard build may still be running.'}
+}
+window.addEventListener('hashchange',route);market();setInterval(market,30000);load();setInterval(load,5*60000);
+</script>
+</body>
+</html>
