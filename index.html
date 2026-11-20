@@ -54,6 +54,7 @@ h2{font-size:20px;font-weight:600}
 .sw{width:18px;height:3px;border-radius:2px;background:var(--up)}.sw.dash{height:0;border-top:2px dashed var(--muted);background:none}.sw.aisw{background:var(--ai)}
 .chart{position:relative}
 .chart svg{display:block;width:100%;overflow:visible}
+.chart.wide{overflow-x:auto;-webkit-overflow-scrolling:touch}.chart.wide svg{min-width:760px}
 .tip{position:absolute;pointer-events:none;background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;font-size:12px;display:none;white-space:nowrap;z-index:2}
 .axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:8px}
 .bot{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
@@ -159,6 +160,7 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;font-s
 <span class="mono ai" id="edge" style="font-size:18px"></span></div>
 <div class="chart" id="aichart"></div>
 </section>
+<section class="panel fade" aria-label="QQQ chart with the plan"><div class="between"><div style="display:flex;flex-direction:column;gap:4px"><h2>QQQ vs the plan</h2><span class="muted" style="font-size:13px" id="qqqday"></span></div><a href="#decisions">Full day in the journal →</a></div><div id="qqqchart"></div></section>
 <div class="row">
 <section class="panel grow" aria-label="Bots"><div class="between"><h2>Bots</h2><a href="#bots">Details →</a></div><div id="botlist" style="display:flex;flex-direction:column;gap:12px"></div></section>
 <section class="panel aip grow" aria-label="Latest AI decisions"><div class="between"><h2>What the AI is thinking</h2><a href="#decisions">Full journal →</a></div><div id="latest" style="display:flex;flex-direction:column;gap:14px"></div></section>
@@ -272,6 +274,46 @@ function latestDecisions(){
 }
 function decLine(t,kind,label,reason){return`<div class="dec"><span class="t">${esc(t)}</span><span class="badge b-${esc((kind||'').toLowerCase())}">${esc(label)}</span><span class="r">${esc(reason||'')}</span></div>`}
 
+const etParts=iso=>{const d=new Date(iso);const f=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(d);const g=t=>f.find(x=>x.type===t).value;return{date:`${g('year')}-${g('month')}-${g('day')}`,min:(+g('hour'))%24*60+(+g('minute'))}};
+const hm=m=>`${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`;
+function qqqChart(day,opts={}){
+  const rows=(D.qqq_charts||{})[day];
+  if(!rows||!rows.length)return`<div class="empty">No QQQ chart for ${esc(day)} yet. It appears once that session has started.</div>`;
+  const plan=(D.qqq_days.find(d=>d.date===day)||{}).plan||null, decs=(D.qqq_days.find(d=>d.date===day)||{}).decisions||[];
+  const W=1000,H=opts.h||380,P={l:8,r:64,t:14,b:26},x0=570,x1=960;
+  const lo=Math.min(...rows.map(r=>Math.min(r[3],r[6]))),hi=Math.max(...rows.map(r=>Math.max(r[2],r[5])));
+  const pad=(hi-lo)*.06,y0=lo-pad,y1=hi+pad;
+  const X=m=>P.l+(m-x0)/(x1-x0)*(W-P.l-P.r),Y=v=>P.t+(1-(v-y0)/(y1-y0))*(H-P.t-P.b),bw=Math.max(1.5,(X(575)-X(570))*.62);
+  let g='';
+  // avoid windows from the plan
+  (plan?.avoid_windows||[]).forEach(w=>{const m=String(w).match(/(\d+):(\d+)\s*-\s*(\d+):(\d+)/);if(!m)return;const a=+m[1]*60+ +m[2],b=+m[3]*60+ +m[4];
+    g+=`<rect x="${X(Math.max(a,x0))}" y="${P.t}" width="${Math.max(0,X(Math.min(b,x1))-X(Math.max(a,x0)))}" height="${H-P.t-P.b}" fill="#FF9A62" fill-opacity=".08"/><text x="${X(Math.max(a,x0))+4}" y="${H-P.b-6}" fill="#FFB98F" font-size="11">avoid</text>`});
+  // no new entries after 15:30, flat by 15:50
+  g+=`<rect x="${X(930)}" y="${P.t}" width="${X(960)-X(930)}" height="${H-P.t-P.b}" fill="#8B98A5" fill-opacity=".06"/>`;
+  for(let m=600;m<=960;m+=60){g+=`<line x1="${X(m)}" x2="${X(m)}" y1="${P.t}" y2="${H-P.b}" stroke="#1E2833"/><text x="${X(m)}" y="${H-8}" fill="#8B98A5" font-size="11" text-anchor="middle" font-family="JetBrains Mono,monospace">${hm(m)}</text>`}
+  for(let i=0;i<=4;i++){const v=y0+(y1-y0)*i/4;g+=`<line x1="${P.l}" x2="${W-P.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#172029"/><text x="${W-P.r+6}" y="${Y(v)+4}" fill="#8B98A5" font-size="11" font-family="JetBrains Mono,monospace">${v.toFixed(1)}</text>`}
+  const line=(i,c,dash,w)=>`<polyline points="${rows.map(r=>`${X(r[0]+2.5).toFixed(1)},${Y(r[i]).toFixed(1)}`).join(' ')}" fill="none" stroke="${c}" stroke-width="${w||2}" ${dash?`stroke-dasharray="${dash}"`:''}/>`;
+  // band fill between upper and lower = the "noise area"
+  g+=`<polygon points="${rows.map(r=>`${X(r[0]+2.5).toFixed(1)},${Y(r[5]).toFixed(1)}`).join(' ')} ${rows.slice().reverse().map(r=>`${X(r[0]+2.5).toFixed(1)},${Y(r[6]).toFixed(1)}`).join(' ')}" fill="#8FBBFF" fill-opacity=".05"/>`;
+  g+=line(5,'#3FD68F','6 5')+line(6,'#FF9A62','6 5')+line(7,'#8FBBFF',null,1.6);
+  rows.forEach(r=>{const up=r[4]>=r[1],c=up?'#3FD68F':'#FF9A62',cx=X(r[0]+2.5);
+    g+=`<line x1="${cx}" x2="${cx}" y1="${Y(r[2])}" y2="${Y(r[3])}" stroke="${c}" stroke-width="1"/><rect x="${cx-bw/2}" y="${Y(Math.max(r[1],r[4]))}" width="${bw}" height="${Math.max(1,Math.abs(Y(r[1])-Y(r[4])))}" fill="${c}"/>`});
+  // AI decisions at check times
+  const priceAt=m=>{let best=rows[0];for(const r of rows)if(r[0]<m)best=r;return best[4]};
+  decs.forEach(d=>{if(!d.time)return;const m=+d.time.slice(0,2)*60+ +d.time.slice(3,5),cx=X(m);
+    const take=d.decision==='take',skip=d.decision==='skip',hold=d.kind==='hold',col=take?'#3FD68F':skip?'#FF9A62':'#8FBBFF';
+    g+=`<line x1="${cx}" x2="${cx}" y1="${P.t}" y2="${H-P.b}" stroke="${col}" stroke-opacity=".35" stroke-dasharray="2 4"/>`;
+    g+=`<g><title>${esc(d.time)} ET · ${esc((d.decision||'').toUpperCase())} ${esc(d.side||'')} · ${esc(d.reason||'')}</title><rect x="${cx-26}" y="${P.t+2}" width="52" height="18" rx="5" fill="#0A0E13" stroke="${col}"/><text x="${cx}" y="${P.t+15}" fill="${col}" font-size="11" text-anchor="middle" font-weight="600">${take?'TAKE':skip?'SKIP':hold?(d.decision||'hold').toUpperCase():(d.decision||'').toUpperCase()}</text></g>`});
+  // the agent's actual fills
+  D.trades.filter(t=>t.bot==='AI agent · QQQ shares').forEach(t=>{
+    [[t.opened,t.entry,t.side==='LONG'?'▲':'▼','entry'],[t.closed,t.exit,'●','exit']].forEach(([iso,px,sym,kind])=>{if(!iso)return;const p=etParts(iso);if(p.date!==day)return;
+      const col=kind==='entry'?(t.side==='LONG'?'#3FD68F':'#FF9A62'):'#E6EDF3',cx=X(Math.min(p.min,959)),cy=Y(px);
+      g+=`<g><title>${kind} ${t.side} ${t.qty} @ ${px}</title><circle cx="${cx}" cy="${cy}" r="9" fill="#0A0E13" stroke="${col}" stroke-width="2"/><text x="${cx}" y="${cy+4}" fill="${col}" font-size="10" text-anchor="middle">${sym}</text><text x="${cx+12}" y="${cy-10}" fill="${col}" font-size="11" font-family="JetBrains Mono,monospace">${kind} ${px}</text></g>`})});
+  const last=rows.at(-1);
+  g+=`<text x="${W-P.r+6}" y="${Y(last[5])+4}" fill="#3FD68F" font-size="11">upper</text><text x="${W-P.r+6}" y="${Y(last[6])+4}" fill="#FF9A62" font-size="11">lower</text>`;
+  return `<div class="chart wide"><svg viewBox="0 0 ${W} ${H}" style="height:auto;max-height:${H}px" role="img" aria-label="QQQ 5-minute chart for ${esc(day)} with the strategy bands, VWAP and the AI's decisions">${g}</svg></div>
+   <div class="legend"><span><span class="sw" style="background:none;border-top:2px dashed #3FD68F;height:0"></span>Upper band: break above = long signal</span><span><span class="sw" style="background:none;border-top:2px dashed #FF9A62;height:0"></span>Lower band: break below = short signal</span><span><span class="sw aisw"></span>VWAP (trailing stop)</span><span><span class="sw" style="background:#FF9A62;opacity:.4;height:8px"></span>Avoid window from the morning plan</span><span>▲▼ entry · ● exit · labels = AI calls at each check</span></div>`;
+}
 function renderOverview(){
   const a=D.account,chg=a.equity-a.start_equity,day=a.equity-a.last_equity;
   $('#eq').textContent=usd(a.equity);
@@ -286,6 +328,8 @@ function renderOverview(){
     ['AI vs rules-only',`<span class="ai">${sgn(s.ai_edge,0)}</span>`,'what the AI added so far','aitile']
   ].map(([l,v,sm,x])=>`<div class="tile ${x||''}"><span class="muted" style="font-size:13px">${l}</span><span class="v">${v}</span><small>${sm}</small></div>`).join('');
   drawEquity();drawAI();
+  const cdays=Object.keys(D.qqq_charts||{}).sort();const cd=cdays.at(-1);
+  $('#qqqday').textContent=cd?`${cd} · 5-minute bars, New York time`:'';$('#qqqchart').innerHTML=cd?qqqChart(cd,{h:340}):'<div class="empty">The chart appears after the next dashboard build.</div>';
   $('#botlist').innerHTML=D.bots.map(botItem).join('');
   latestDecisions();
   $('#recent').innerHTML=tradeRows(D.trades.slice(0,8));
@@ -316,6 +360,7 @@ function renderDecisions(){
       <div class="chips">${chip(p.trade_today!==false,'Trading today','No trading today')}${chip(p.allow_long!==false,'Longs allowed','No longs')}${chip(p.allow_short!==false,'Shorts allowed','No shorts')}
       <span class="chip">Max size ${Math.round((p.max_size??1)*100)}%</span>${(p.avoid_windows||[]).map(w=>`<span class="chip">Avoid ${esc(w)}</span>`).join('')}</div>
       ${(p.key_events||[]).length?`<div class="soft" style="font-size:13px"><span class="muted">Key events:</span> ${p.key_events.map(esc).join(' · ')}</div>`:''}</section>
+      <section class="panel"><div class="between"><h2>The chart with the plan</h2><span class="muted" style="font-size:13px">5-minute bars · New York time · hover labels for reasons</span></div>${qqqChart(cur)}</section>
       <section class="panel"><h2>Through the day</h2>${tl}</section></div>
       <aside style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px"><section class="panel"><h2>Day result</h2>${res}</section>${scorecard()}</aside></div>`;
   }else{
