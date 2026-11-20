@@ -292,13 +292,14 @@ function renderOverview(){
 }
 
 function renderDecisions(){
-  $('#agentseg').innerHTML=[['qqq','QQQ agent'],['crypto','Crypto agent']].map(([k,l])=>`<button type="button" class="${k===agent?'on':''}" data-a="${k}">${l}</button>`).join('');
+  $('#agentseg').innerHTML=[['qqq','QQQ agent'],['crypto','Crypto agent'],['dts','Day Trader skill']].map(([k,l])=>`<button type="button" class="${k===agent?'on':''}" data-a="${k}">${l}</button>`).join('');
   $('#agentseg').querySelectorAll('button').forEach(b=>b.onclick=()=>{agent=b.dataset.a;renderDecisions()});
-  const days=agent==='qqq'?D.qqq_days.map(d=>d.date):[...new Set(D.crypto_runs.map(r=>(r.time||r.id).slice(0,10)))];
+  const RUNS=agent==='dts'?(D.dts_runs||[]):D.crypto_runs;
+  const days=agent==='qqq'?D.qqq_days.map(d=>d.date):[...new Set(RUNS.map(r=>(r.time||r.id).slice(0,10)))];
   days.reverse();const sel=$('#daysel');const cur=sel.dataset.agent===agent&&days.includes(sel.value)?sel.value:days[0];
   sel.dataset.agent=agent;sel.innerHTML=days.map(d=>`<option ${d===cur?'selected':''}>${d}</option>`).join('');sel.onchange=renderDecisions;
   const body=$('#decbody');
-  if(!cur){body.innerHTML=`<div class="empty">No ${agent==='qqq'?'QQQ':'crypto'} agent decisions yet.</div>`;return}
+  if(!cur){body.innerHTML=`<div class="empty">No ${{qqq:'QQQ agent',crypto:'crypto agent',dts:'Day Trader skill'}[agent]} decisions yet.</div>`;return}
   const dotc={take:'#3FD68F',buy:'#3FD68F',skip:'#FF9A62',sell:'#FF9A62',stop:'#FF9A62',stopped:'#FF9A62',hold:'#8FBBFF',close:'#C9D3DD'};
   const step=(t,kind,label,sub,reason,facts)=>`<div class="tl"><div class="rail"><i style="background:${dotc[kind]||'#3A4654'}"></i><u></u></div><div class="body">
    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="mono soft" style="font-size:14px">${esc(t)}</span><span class="badge b-${esc(kind)}">${esc(label)}</span><span class="muted" style="font-size:13px">${esc(sub||'')}</span></div>
@@ -318,13 +319,13 @@ function renderDecisions(){
       <section class="panel"><h2>Through the day</h2>${tl}</section></div>
       <aside style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px"><section class="panel"><h2>Day result</h2>${res}</section>${scorecard()}</aside></div>`;
   }else{
-    const runs=D.crypto_runs.filter(r=>(r.time||r.id).startsWith(cur)).reverse();
+    const runs=RUNS.filter(r=>(r.time||r.id).startsWith(cur)).reverse();
     const items=runs.map(r=>{const t=new Date(r.time).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit',hour12:false});
       const acts=(r.actions||[]).map(a=>step(t,a.action,`${a.action.toUpperCase()} ${a.coin}`,a.notional?usd(a.notional,0):'',a.reason,`@ ${px(a.price)}${a.stop_pct?' · stop −'+a.stop_pct+'%':''}`)).join('');
-      const quiet=(r.decisions||[]).filter(d=>!['buy','sell'].includes(d.decision)||d.blocked).map(d=>`${d.coin.split('/')[0]} ${d.decision}${d.blocked?' ('+d.blocked+')':''}`).join(' · ');
+      const quiet=(r.decisions||[]).filter(d=>!['buy','sell'].includes(d.decision)||d.blocked).map(d=>`${d.coin.split('/')[0]} ${d.decision}${d.blocked?' ('+d.blocked+')':''}${agent==='dts'&&d.reason?' — '+d.reason:''}`).join(' · ');
       return acts+step(t,'hold','CHECK','',r.view,quiet)}).join('');
     body.innerHTML=`<div class="row"><section class="panel" style="flex:999 1 560px;min-width:0"><h2>Hourly checks · times in ${esc(tz)}</h2>${items}</section>
-      <aside style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px">${cryptoNow(runs[0])}${scorecard()}</aside></div>`;
+      <aside style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px">${agent==='crypto'?cryptoNow(runs[0]):''}${scorecard()}</aside></div>`;
   }
 }
 const chip=(ok,a,b)=>`<span class="chip" style="${ok?'background:var(--upbg);color:var(--uptext)':'background:var(--downbg);color:var(--downtext)'}">${ok?a:b}</span>`;
